@@ -1,3 +1,23 @@
+
+import sys
+import warnings
+
+# Critical workaround for Python 3.13 compatibility
+if sys.version_info >= (3, 13):
+    import torch._classes
+    torch._classes._register_python_class = lambda *args, **kwargs: None
+    warnings.filterwarnings("ignore", category=UserWarning, module="torch._classes")
+
+# Now import other modules
+import streamlit as st
+import numpy as np
+import cv2
+import torch
+import torch.nn as nn
+from PIL import Image
+# ... rest of your imports
+
+
 import streamlit as st
 import numpy as np
 import cv2
@@ -82,7 +102,7 @@ class DummyCNN(nn.Module):
         super().__init__()
         self.conv1 = nn.Conv2d(3, 6, 3)
         self.pool = nn.MaxPool2d(2, 2)
-        self.fc1 = nn.Linear(6 * 14 * 14, 3)  # Assuming 3 classes
+        self.fc1 = nn.Linear(6 * 14 * 14, 3)
         
         # Workaround for PyTorch internal class registration
         if hasattr(torch._C, '_ImperativeEngine'):
