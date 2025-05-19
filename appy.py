@@ -8,8 +8,11 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import io
 from sklearn import svm
+from sklearn.metrics import roc_curve, auc, accuracy_score
+from sklearn.model_selection import train_test_split
 from torchvision import transforms
 from datetime import datetime
+import seaborn as sns
 
 # Initialize session state for page navigation and data storage
 if 'page' not in st.session_state:
@@ -36,6 +39,18 @@ if 'after_file' not in st.session_state:
     st.session_state.after_file = None
 if 'model_choice' not in st.session_state:
     st.session_state.model_choice = "SVM"
+if 'svm_model' not in st.session_state:
+    st.session_state.svm_model = None
+if 'cnn_model' not in st.session_state:
+    st.session_state.cnn_model = None
+if 'svm_metrics' not in st.session_state:
+    st.session_state.svm_metrics = {}
+if 'cnn_metrics' not in st.session_state:
+    st.session_state.cnn_metrics = {}
+if 'before_classification' not in st.session_state:
+    st.session_state.before_classification = {"Water": 0, "Vegetation": 0, "Barren Land": 0}
+if 'after_classification' not in st.session_state:
+    st.session_state.after_classification = {"Water": 0, "Vegetation": 0, "Barren Land": 0}
 
 
 # Set the page layout and browser tab title
@@ -54,21 +69,86 @@ st.markdown(
 
 # -------- Models --------
 class DummyCNN(nn.Module):
-    def __init__(self):
+    def __init__(self, num_classes=2):
         super(DummyCNN, self).__init__()
         self.conv1 = nn.Conv2d(3, 6, 3)
-        self.pool = nn.MaxPool2d(2,2)
-        self.fc1 = nn.Linear(6*14*14, 2)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.fc1 = nn.Linear(6 * 14 * 14, num_classes)
 
     def forward(self, x):
         x = self.pool(torch.relu(self.conv1(x)))
-        x = x.view(-1, 6*14*14)
+        x = x.view(-1, 6 * 14 * 14)
         x = self.fc1(x)
         return x
 
-cnn_model = DummyCNN()
-cnn_model.eval()
-svm_model = svm.SVC(probability=True)
+def train_dummy_svm(features, labels):
+    """Trains a dummy SVM model."""
+    X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=0.2, random_state=42)
+    model = svm.SVC(probability=True, random_state=42)
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    y_prob = model.predict_proba(X_test)[:, 1]
+    accuracy = accuracy_score(y_test, y_pred)
+    return model, y_test, y_prob, accuracy
+
+def train_dummy_cnn(images, labels, num_classes=2, epochs=10):
+    """Trains a dummy CNN model."""
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Resize((64, 64)),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
+
+    # Simulate dataset
+    class DummyDataset(torch.utils.data.Dataset):
+        def __init__(self, images, labels, transform=None):
+            self.images = images
+            self.labels = labels
+            self.transform = transform
+
+        def __len__(self):
+            return len(self.images)
+
+        def __getitem__(self, idx):
+            image = Image.fromarray(self.images[idx])
+            if self.transform:
+                image = self.transform(image)
+            label = self.labels[idx]
+            return image, label
+
+    dataset = DummyDataset(images, labels, transform)
+    train_loader = torch.utils.data.DataLoader(dataset, batch_size=16, shuffle=True)
+
+    model = DummyCNN(num_classes)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters())
+
+    for epoch in range(epochs):
+        for i, (inputs, labels) in enumerate(train_loader):
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+
+    # Simulate validation
+    val_dataset = DummyDataset(images[:len(images)//5], labels[:len(labels)//5], transform)
+    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=16)
+    model.eval()
+    all_preds = []
+    all_labels = []
+    all_probs = []
+    with torch.no_grad():
+        for inputs, labels in val_loader:
+            outputs = model(inputs)
+            probs = torch.softmax(outputs, dim=1)
+            _, predicted = torch.max(outputs.data, 1)
+            all_preds.extend(predicted.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+            all_probs.extend(probs[:, 1].cpu().numpy())
+
+    accuracy = accuracy_score(all_labels, all_preds)
+    return model, np.array(all_labels), np.array(all_probs), accuracy
 
 # -------- Image Processing Functions --------
 def preprocess_img(img, size=(64,64)):
@@ -115,18 +195,22 @@ def get_change_mask(img1, img2, threshold=30):
     _, change_mask = cv2.threshold(diff, threshold, 1, cv2.THRESH_BINARY)
     return change_mask.astype(np.uint8)
 
-def classify_land_svm(img):
-    """Simplified land classification using SVM (Placeholder)"""
-    # In a real scenario, you would load a trained SVM model here and use it for prediction.
-    # For this example, we'll return a dummy classification.
-    return {"Vegetation": 40, "Land": 30, "Water": 30}
-
-def classify_land_cnn(img):
-    """Simplified land classification using CNN (Placeholder)"""
-    # In a real scenario, you would load a trained CNN model here, preprocess the image,
-    # pass it through the model, and interpret the output.
-    # For this example, we'll return a different dummy classification.
-    return {"Vegetation": 45, "Land": 35, "Developed": 20}
+def classify_pixels(img_array, land_classes):
+    """Assigns land classes to pixels based on a simplified rule."""
+    classification = np.zeros(img_array.shape[:2], dtype=np.uint8)
+    for i in range(img_array.shape[0]):
+        for j in range(img_array.shape[1]):
+            r, g, b = img_array[i, j]
+            if b > 100 and r < 50 and g < 50:  # Simplified water detection
+                classification[i, j] = 0  # Water
+            elif g > r and g > b:  # Simplified vegetation detection
+                classification[i, j] = 1  # Vegetation
+            else:
+                classification[i, j] = 2  # Barren Land
+    counts = np.bincount(classification.flatten(), minlength=len(land_classes))
+    total_pixels = classification.size
+    percentages = {land_classes[i]: (counts[i] / total_pixels) * 100 for i in range(len(land_classes))}
+    return percentages, classification
 
 def detect_calamity(date1, date2, change_percentage):
     """Detects potential calamities based on changes and time difference"""
@@ -136,12 +220,12 @@ def detect_calamity(date1, date2, change_percentage):
         if date_diff <= 10:
             return "⚠️ **Possible Flood:** Rapid and significant changes observed in a short period may indicate flooding."
         elif date_diff <= 30:
-            return "🔥 **Possible Deforestation:** Significant loss of vegetation over a short term could suggest deforestation or wildfires."
+            return "🔥 **Possible Deforestation/Fire:** Significant loss of vegetation over a short term could suggest deforestation or wildfires."
         else:
-            return "🏗️ **Possible Urbanization:** Gradual yet significant increase in developed areas over time might indicate urbanization."
+            return "🏗️ **Possible Urbanization/Land Development:** Gradual yet significant increase in non-vegetated areas over time might indicate urbanization or land development."
     elif change_percentage > 0.05:
-        return "🌱 **Seasonal Changes Detected:** Minor changes likely due to natural seasonal variations in vegetation or water bodies."
-    return "✅ **No Significant Calamity Detected:** Minimal changes observed between the two images."
+        return "🌱 **Noticeable Environmental Changes:** Changes beyond typical seasonal variations are observed, requiring further investigation."
+    return "✅ **No Significant Environmental Calamity Detected:** Minimal changes observed between the two images."
 
 def get_csv_bytes(data_dict):
     df = pd.DataFrame(list(data_dict.items()), columns=["Class", "Area (%)"])
@@ -195,32 +279,28 @@ def page2():
                 # Calculate change mask
                 st.session_state.change_mask = get_change_mask(before_img, aligned_after)
 
-                # Classify land based on selected model
-                if st.session_state.model_choice == "SVM":
-                    st.session_state.classification_svm = classify_land_svm(aligned_after)
-                    # Create SVM heatmap
-                    h, w = st.session_state.change_mask.shape
-                    heatmap_svm = np.zeros((h, w, 3), dtype=np.uint8)
-                    heatmap_svm[..., 0] = st.session_state.change_mask * 255  # Blue channel for SVM
-                    heatmap_img_svm = Image.fromarray(heatmap_svm)
-                    aligned_after_resized = st.session_state.aligned_images["after"].resize((w, h))
-                    st.session_state.heatmap_overlay_svm = Image.blend(aligned_after_resized.convert("RGB"),
-                                                                        heatmap_img_svm.convert("RGB"),
-                                                                        alpha=0.5)
-                    st.session_state.classification = st.session_state.classification_svm # For common analysis
+                # Simplified pixel-based classification for before and after images
+                land_classes = ["Water", "Vegetation", "Barren Land"]
+                before_arr = np.array(before_img)
+                after_arr = np.array(aligned_after)
+                st.session_state.before_classification, _ = classify_pixels(before_arr, land_classes)
+                st.session_state.after_classification, _ = classify_pixels(after_arr, land_classes)
 
-                elif st.session_state.model_choice == "CNN":
-                    st.session_state.classification_cnn = classify_land_cnn(aligned_after)
-                    # Create CNN heatmap
-                    h, w = st.session_state.change_mask.shape
-                    heatmap_cnn = np.zeros((h, w, 3), dtype=np.uint8)
-                    heatmap_cnn[..., 1] = st.session_state.change_mask * 255  # Green channel for CNN
-                    heatmap_img_cnn = Image.fromarray(heatmap_cnn)
-                    aligned_after_resized = st.session_state.aligned_images["after"].resize((w, h))
-                    st.session_state.heatmap_overlay_cnn = Image.blend(aligned_after_resized.convert("RGB"),
-                                                                        heatmap_img_cnn.convert("RGB"),
-                                                                        alpha=0.5)
-                    st.session_state.classification = st.session_state.classification_cnn # For common analysis
+                # Train dummy models for demonstration
+                dummy_features = np.random.rand(100, 10) # Replace with actual features
+                dummy_labels = np.random.randint(0, 2, 100) # Replace with actual labels
+                st.session_state.svm_model, svm_y_test, svm_y_prob, svm_accuracy = train_dummy_svm(dummy_features, dummy_labels)
+                fpr_svm, tpr_svm, _ = roc_curve(svm_y_test, svm_y_prob)
+                roc_auc_svm = auc(fpr_svm, tpr_svm)
+                st.session_state.svm_metrics = {"fpr": fpr_svm, "tpr": tpr_svm, "roc_auc": roc_auc_svm, "accuracy": svm_accuracy}
+
+                dummy_images = np.random.randint(0, 256, size=(50, 64, 64, 3), dtype=np.uint8) # Replace with actual image data
+                dummy_cnn_labels = np.random.randint(0, 2, 50) # Replace with actual labels
+                st.session_state.cnn_model, cnn_y_test, cnn_y_prob, cnn_accuracy = train_dummy_cnn(dummy_images, dummy_cnn_labels)
+                fpr_cnn, tpr_cnn, _ = roc_curve(cnn_y_test, cnn_y_prob)
+                roc_auc_cnn = auc(fpr_cnn, tpr_cnn)
+                st.session_state.cnn_metrics = {"fpr": fpr_cnn, "tpr": tpr_cnn, "roc_auc": roc_auc_cnn, "accuracy": cnn_accuracy}
+
 
                 st.session_state.page = 3
             except Exception as e:
@@ -237,90 +317,4 @@ def page3():
     col1, col2, col3 = st.columns(3)
     with col1:
         st.image(st.session_state.aligned_images["before"],
-                 caption="BEFORE Image", use_column_width=True)
-    with col2:
-        st.image(st.session_state.aligned_images["after"],
-                 caption="Aligned AFTER Image", use_column_width=True)
-    with col3:
-        st.image(st.session_state.aligned_images["aligned_black"],
-                 caption="Aligned Difference", use_column_width=True)
-
-    if st.button("⬅️ Back"):
-        st.session_state.page = 2
-    if st.button("Next ➡️"):
-        st.session_state.page = 4
-
-def page4():
-    st.header("4. Change Detection Heatmap")
-
-    # Ensure we have valid images and change mask
-    if 'aligned_images' not in st.session_state or st.session_state.aligned_images is None or st.session_state.change_mask is None:
-        st.error("Please upload and process images first")
-        st.session_state.page = 2
-        return
-
-    st.subheader(f"Heatmap using {st.session_state.model_choice} Model")
-
-    h, w = st.session_state.change_mask.shape
-    aligned_after_resized = st.session_state.aligned_images["after"].resize((w, h))
-
-    if st.session_state.model_choice == "SVM" and st.session_state.heatmap_overlay_svm:
-        st.image(st.session_state.heatmap_overlay_svm, caption="Change Heatmap (Blue)", use_column_width=True)
-    elif st.session_state.model_choice == "CNN" and st.session_state.heatmap_overlay_cnn:
-        st.image(st.session_state.heatmap_overlay_cnn, caption="Change Heatmap (Green)", use_column_width=True)
-    else:
-        # Default red heatmap if something goes wrong or initially
-        heatmap = np.zeros((h, w, 3), dtype=np.uint8)
-        heatmap[..., 2] = st.session_state.change_mask * 255  # Red channel
-        heatmap_img = Image.fromarray(heatmap)
-        st.session_state.heatmap_overlay_default = Image.blend(aligned_after_resized.convert("RGB"),
-                                                                heatmap_img.convert("RGB"),
-                                                                alpha=0.5)
-        st.image(st.session_state.heatmap_overlay_default, caption="Change Heatmap (Default Red)", use_column_width=True)
-
-    if st.button("⬅️ Back"):
-        st.session_state.page = 3
-    if st.button("Next ➡️"):
-        st.session_state.page = 5
-
-def page5():
-    st.header("5. Land Classification & Analysis")
-
-    if 'classification' not in st.session_state or 'change_mask' not in st.session_state or 'before_date' not in st.session_state or 'after_date' not in st.session_state:
-        st.error("Analysis data not found. Please start from the beginning.")
-        st.session_state.page = 1
-        return
-
-    # Calculate change percentage
-    total_pixels = np.prod(st.session_state.change_mask.shape)
-    total_change = (np.sum(st.session_state.change_mask) / total_pixels)
-
-    # Calamity detection
-    st.subheader("🚨 Calamity Detection")
-    calamity_report = detect_calamity(
-        st.session_state.before_date,
-        st.session_state.after_date,
-        total_change
-    )
-    st.markdown(f"<h3 style='color: orange;'>{calamity_report}</h3>", unsafe_allow_html=True)
-    st.markdown("""
-        <p style='font-size: 16px; color: lightgray;'>
-            This section analyzes the changes detected between the 'before' and 'after' images, 
-            considering the magnitude of change and the time elapsed. The system identifies 
-            potential natural or human-induced calamities based on these factors.
-        </p>
-    """, unsafe_allow_html=True)
-
-
-    # Classification Table
-    st.subheader(f"Land Classification using {st.session_state.model_choice}")
-    df_class = pd.DataFrame(list(st.session_state.classification.items()),
-                            columns=["Class", "Area (%)"])
-    st.table(df_class)
-
-    # Pie Chart
-    st.subheader("Land Distribution Comparison")
-    fig, ax = plt.subplots(1, 2, figsize=(12, 6))
-
-    # Dummy data for before image classification (replace with actual if available)
-    classification_before
+                 caption="
