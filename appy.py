@@ -34,6 +34,17 @@ from datetime import datetime
 import sys
 import warnings
 
+# Configure Streamlit to avoid path-related issues
+st.set_page_config(
+    layout="wide",
+    page_title="Satellite Image Analysis",
+    initial_sidebar_state="expanded"
+)
+
+# Disable file watcher for PyTorch modules
+if 'streamlit.runtime.scriptrunner.file_watcher' in sys.modules:
+    sys.modules['streamlit.runtime.scriptrunner.file_watcher'].FileWatcher = lambda *args, **kwargs: None
+
 # Suppress warnings
 warnings.filterwarnings("ignore")
 
