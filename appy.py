@@ -1,3 +1,5 @@
+7.3 the best out here
+
 import streamlit as st
 import numpy as np
 import cv2
@@ -8,6 +10,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import io
 from sklearn import svm
+from sklearn.metrics import roc_curve, auc, accuracy_score
 from torchvision import transforms
 from datetime import datetime
 
@@ -36,6 +39,18 @@ if 'after_file' not in st.session_state:
     st.session_state.after_file = None
 if 'model_choice' not in st.session_state:
     st.session_state.model_choice = "SVM"
+if 'svm_roc_fig' not in st.session_state:
+    st.session_state.svm_roc_fig = None
+if 'cnn_roc_fig' not in st.session_state:
+    st.session_state.cnn_roc_fig = None
+if 'svm_accuracy' not in st.session_state:
+    st.session_state.svm_accuracy = None
+if 'cnn_accuracy' not in st.session_state:
+    st.session_state.cnn_accuracy = None
+if 'classification_before_svm' not in st.session_state:
+    st.session_state.classification_before_svm = {"Vegetation": 50, "Land": 30, "Water": 20}
+if 'classification_before_cnn' not in st.session_state:
+    st.session_state.classification_before_cnn = {"Vegetation": 55, "Land": 25, "Developed": 20}
 
 
 # Set the page layout and browser tab title
@@ -58,7 +73,7 @@ class DummyCNN(nn.Module):
         super(DummyCNN, self).__init__()
         self.conv1 = nn.Conv2d(3, 6, 3)
         self.pool = nn.MaxPool2d(2,2)
-        self.fc1 = nn.Linear(6*14*14, 2)
+        self.fc1 = nn.Linear(6*14*14, 3) # Assuming 3 classes now
 
     def forward(self, x):
         x = self.pool(torch.relu(self.conv1(x)))
@@ -90,7 +105,7 @@ def align_images(img1, img2):
 
     try:
         cc, warp_matrix = cv2.findTransformECC(gray1, gray2, warp_matrix,
-                                             cv2.MOTION_EUCLIDEAN, criteria)
+                                                cv2.MOTION_EUCLIDEAN, criteria)
         aligned = cv2.warpAffine(img2_np, warp_matrix,
                                  (img1_np.shape[1], img1_np.shape[0]),
                                  flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP)
@@ -115,18 +130,33 @@ def get_change_mask(img1, img2, threshold=30):
     _, change_mask = cv2.threshold(diff, threshold, 1, cv2.THRESH_BINARY)
     return change_mask.astype(np.uint8)
 
-def classify_land_svm(img):
+def classify_land_svm(img_arr):
     """Simplified land classification using SVM (Placeholder)"""
-    # In a real scenario, you would load a trained SVM model here and use it for prediction.
-    # For this example, we'll return a dummy classification.
-    return {"Vegetation": 40, "Land": 30, "Water": 30}
+    # Simulate feature extraction (e.g., flattened image)
+    features = img_arr.flatten()[:100] # Use a subset for dummy training
+
+    # Dummy labels for training
+    labels = np.random.randint(0, 3, 50) # Assuming 3 classes
+
+    # Train the SVM model (in a real scenario, this would be pre-trained)
+    svm_model.fit(np.random.rand(50, 100), labels)
+
+    # Make a prediction
+    probabilities = svm_model.predict_proba(features.reshape(1, -1))[0]
+    classes = ["Vegetation", "Land", "Water"]
+    return {classes[i]: prob * 100 for i, prob in enumerate(probabilities)}
 
 def classify_land_cnn(img):
     """Simplified land classification using CNN (Placeholder)"""
-    # In a real scenario, you would load a trained CNN model here, preprocess the image,
-    # pass it through the model, and interpret the output.
-    # For this example, we'll return a different dummy classification.
-    return {"Vegetation": 45, "Land": 35, "Developed": 20}
+    transform = transforms.ToTensor()
+    img_tensor = transform(img).unsqueeze(0) # Add batch dimension
+
+    # Make a prediction
+    with torch.no_grad():
+        output = cnn_model(img_tensor)
+        probabilities = torch.softmax(output, dim=1).numpy()[0]
+        classes = ["Vegetation", "Land", "Developed"]
+        return {classes[i]: prob * 100 for i, prob in enumerate(probabilities)}
 
 def detect_calamity(date1, date2, change_percentage):
     """Detects potential calamities based on changes and time difference"""
@@ -146,6 +176,56 @@ def detect_calamity(date1, date2, change_percentage):
 def get_csv_bytes(data_dict):
     df = pd.DataFrame(list(data_dict.items()), columns=["Class", "Area (%)"])
     return df.to_csv(index=False).encode()
+
+def generate_roc_curve_svm():
+    # Dummy data for ROC curve (replace with actual predictions and true labels)
+    y_true = np.array([0, 0, 1, 1, 0, 1])
+    y_scores = np.array([0.2, 0.3, 0.7, 0.8, 0.4, 0.9])
+
+    fpr, tpr, thresholds = roc_curve(y_true, y_scores)
+    roc_auc = auc(fpr, tpr)
+
+    fig, ax = plt.subplots()
+    ax.plot(fpr, tpr, color='blue', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
+    ax.plot([0, 1], [0, 1], color='gray', lw=1, linestyle='--')
+    ax.set_xlim([0.0, 1.0])
+    ax.set_ylim([0.0, 1.05])
+    ax.set_xlabel('False Positive Rate')
+    ax.set_ylabel('True Positive Rate')
+    ax.set_title('Receiver Operating Characteristic (SVM)')
+    ax.legend(loc="lower right")
+    return fig
+
+def generate_roc_curve_cnn():
+    # Dummy data for ROC curve (replace with actual predictions and true labels)
+    y_true = np.array([0, 1, 0, 1, 1, 0])
+    y_scores = np.array([0.8, 0.6, 0.3, 0.9, 0.7, 0.2])
+
+    fpr, tpr, thresholds = roc_curve(y_true, y_scores)
+    roc_auc = auc(fpr, tpr)
+
+    fig, ax = plt.subplots()
+    ax.plot(fpr, tpr, color='green', lw=2, label=f'ROC curve (area = {roc_auc:.2f})')
+    ax.plot([0, 1], [0, 1], color='gray', lw=1, linestyle='--')
+    ax.set_xlim([0.0, 1.0])
+    ax.set_ylim([0.0, 1.05])
+    ax.set_xlabel('False Positive Rate')
+    ax.set_ylabel('True Positive Rate')
+    ax.set_title('Receiver Operating Characteristic (CNN)')
+    ax.legend(loc="lower right")
+    return fig
+
+def calculate_accuracy_svm():
+    # Dummy data for accuracy calculation (replace with actual predictions and true labels)
+    y_true = np.array([0, 1, 0, 1, 0, 1])
+    y_pred = np.array([0, 1, 1, 1, 0, 0])
+    return accuracy_score(y_true, y_pred)
+
+def calculate_accuracy_cnn():
+    # Dummy data for accuracy calculation (replace with actual predictions and true labels)
+    y_true = np.array([0, 1, 1, 0, 0, 1])
+    y_pred = np.array([0, 1, 1, 0, 1, 1])
+    return accuracy_score(y_true, y_pred)
 
 # -------- Pages --------
 def page1():
@@ -197,35 +277,39 @@ def page2():
 
                 # Classify land based on selected model
                 if st.session_state.model_choice == "SVM":
-                    st.session_state.classification_svm = classify_land_svm(aligned_after)
-                    # Create SVM heatmap
+                    before_arr = preprocess_img(before_img)
+                    after_arr = preprocess_img(aligned_after)
+                    st.session_state.classification_svm = classify_land_svm(after_arr)
+                    # Create SVM heatmap (Blue)
                     h, w = st.session_state.change_mask.shape
                     heatmap_svm = np.zeros((h, w, 3), dtype=np.uint8)
-                    heatmap_svm[..., 0] = st.session_state.change_mask * 255  # Blue channel for SVM
+                    heatmap_svm[..., 0] = st.session_state.change_mask * 255
                     heatmap_img_svm = Image.fromarray(heatmap_svm)
                     aligned_after_resized = st.session_state.aligned_images["after"].resize((w, h))
                     st.session_state.heatmap_overlay_svm = Image.blend(aligned_after_resized.convert("RGB"),
                                                                         heatmap_img_svm.convert("RGB"),
                                                                         alpha=0.5)
-                    st.session_state.classification = st.session_state.classification_svm # For common analysis
+                    st.session_state.classification = st.session_state.classification_svm
+                    st.session_state.svm_roc_fig = generate_roc_curve_svm()
+                    st.session_state.svm_accuracy = calculate_accuracy_svm()
 
                 elif st.session_state.model_choice == "CNN":
                     st.session_state.classification_cnn = classify_land_cnn(aligned_after)
-                    # Create CNN heatmap
+                    # Create CNN heatmap (Green)
                     h, w = st.session_state.change_mask.shape
                     heatmap_cnn = np.zeros((h, w, 3), dtype=np.uint8)
-                    heatmap_cnn[..., 1] = st.session_state.change_mask * 255  # Green channel for CNN
+                    heatmap_cnn[..., 1] = st.session_state.change_mask * 255
                     heatmap_img_cnn = Image.fromarray(heatmap_cnn)
                     aligned_after_resized = st.session_state.aligned_images["after"].resize((w, h))
                     st.session_state.heatmap_overlay_cnn = Image.blend(aligned_after_resized.convert("RGB"),
                                                                         heatmap_img_cnn.convert("RGB"),
                                                                         alpha=0.5)
-                    st.session_state.classification = st.session_state.classification_cnn # For common analysis
-
-                st.session_state.page = 3
+                    st.session_state.classification = st.session_state.classification_cnn
+                    st.session_state.cnn_roc_fig = generate_roc_curve_cnn()
+                    st.session_state.cnn_accuracy = calculate_accuracy_cnn()
+                    st.session_state.page = 3
             except Exception as e:
                 st.error(f"Error processing images: {e}")
-
 def page3():
     st.header("3. Aligned Images Comparison")
 
@@ -274,8 +358,8 @@ def page4():
         heatmap[..., 2] = st.session_state.change_mask * 255  # Red channel
         heatmap_img = Image.fromarray(heatmap)
         st.session_state.heatmap_overlay_default = Image.blend(aligned_after_resized.convert("RGB"),
-                                                                heatmap_img.convert("RGB"),
-                                                                alpha=0.5)
+                                                                    heatmap_img.convert("RGB"),
+                                                                    alpha=0.5)
         st.image(st.session_state.heatmap_overlay_default, caption="Change Heatmap (Default Red)", use_column_width=True)
 
     if st.button("⬅️ Back"):
@@ -305,8 +389,8 @@ def page5():
     st.markdown(f"<h3 style='color: orange;'>{calamity_report}</h3>", unsafe_allow_html=True)
     st.markdown("""
         <p style='font-size: 16px; color: lightgray;'>
-            This section analyzes the changes detected between the 'before' and 'after' images, 
-            considering the magnitude of change and the time elapsed. The system identifies 
+            This section analyzes the changes detected between the 'before' and 'after' images,
+            considering the magnitude of change and the time elapsed. The system identifies
             potential natural or human-induced calamities based on these factors.
         </p>
     """, unsafe_allow_html=True)
@@ -322,5 +406,71 @@ def page5():
     st.subheader("Land Distribution Comparison")
     fig, ax = plt.subplots(1, 2, figsize=(12, 6))
 
-    # Dummy data for before image classification (replace with actual if available)
-    classification_before
+    # Data for before image classification
+    if st.session_state.model_choice == "SVM":
+        classification_before = st.session_state.classification_before_svm
+    else:
+        classification_before = st.session_state.classification_before_cnn
+
+    labels_before = classification_before.keys()
+    sizes_before = classification_before.values()
+    ax[0].pie(sizes_before, labels=labels_before, autopct='%1.1f%%', shadow=True, startangle=140)
+    ax[0].axis('equal')
+    ax[0].set_title('Before Image Classification')
+
+    labels_after = st.session_state.classification.keys()
+    sizes_after = st.session_state.classification.values()
+    ax[1].pie(sizes_after, labels=labels_after, autopct='%1.1f%%', shadow=True, startangle=140)
+    ax[1].axis('equal')
+    ax[1].set_title('After Image Classification')
+
+    st.pyplot(fig)
+
+    if st.button("⬅️ Back"):
+        st.session_state.page = 4
+    if st.button("Next ➡️"):
+        st.session_state.page = 6
+
+def page6():
+    st.header("6. Model Evaluation")
+
+    if st.session_state.model_choice == "SVM":
+        st.subheader("SVM Model Evaluation")
+        if st.session_state.svm_roc_fig:
+            st.pyplot(st.session_state.svm_roc_fig)
+        else:
+            st.warning("ROC curve data not available for SVM.")
+
+        if st.session_state.svm_accuracy is not None:
+            st.metric("Accuracy", f"{st.session_state.svm_accuracy:.2f}")
+        else:
+            st.warning("Accuracy data not available for SVM.")
+
+    elif st.session_state.model_choice == "CNN":
+        st.subheader("CNN Model Evaluation")
+        if st.session_state.cnn_roc_fig:
+            st.pyplot(st.session_state.cnn_roc_fig)
+        else:
+            st.warning("ROC curve data not available for CNN.")
+
+        if st.session_state.cnn_accuracy is not None:
+            st.metric("Accuracy", f"{st.session_state.cnn_accuracy:.2f}")
+        else:
+            st.warning("Accuracy data not available for CNN.")
+
+    if st.button("⬅️ Back"):
+        st.session_state.page = 5
+
+# -------- Main App Flow --------
+if st.session_state.page == 1:
+    page1()
+elif st.session_state.page == 2:
+    page2()
+elif st.session_state.page == 3:
+    page3()
+elif st.session_state.page == 4:
+    page4()
+elif st.session_state.page == 5:
+    page5()
+elif st.session_state.page == 6:
+    page6()
