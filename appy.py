@@ -12,6 +12,12 @@ from sklearn import svm
 from sklearn.metrics import roc_curve, auc, accuracy_score
 from torchvision import transforms
 from datetime import datetime
+import torch._classes
+import sys
+
+# Workaround for Python 3.13 compatibility
+if sys.version_info >= (3, 13):
+    torch._classes._register_python_class = lambda *args, **kwargs: None
 
 # Initialize session state for page navigation and data storage
 if 'page' not in st.session_state:
@@ -69,17 +75,17 @@ st.markdown(
 # -------- Models --------
 class DummyCNN(nn.Module):
     def __init__(self):
-        super(DummyCNN, self).__init__()
+        super().__init__()  # Changed to simpler super() call
         self.conv1 = nn.Conv2d(3, 6, 3)
         self.pool = nn.MaxPool2d(2,2)
-        self.fc1 = nn.Linear(6*14*14, 3) # Assuming 3 classes now
+        self.fc1 = nn.Linear(6*14*14, 3)
         
-        # Add this to prevent the error
-        self._backend = None
-
+        # Add dummy attribute to prevent the error
+        self._backend = torch._C._ImperativeEngine()
+        
     def forward(self, x):
         x = self.pool(torch.relu(self.conv1(x)))
-        x = x.view(-1, 6*14*14)
+        x = torch.flatten(x, 1)  # Better than view()
         x = self.fc1(x)
         return x
 
