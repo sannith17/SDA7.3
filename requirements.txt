@@ -7,4 +7,3 @@ matplotlib
 opencv-python-headless
 numpy
 pandas
-opencv-python
