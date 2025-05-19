@@ -34,16 +34,7 @@ from datetime import datetime
 import sys
 import warnings
 
-# Configure Streamlit to avoid path-related issues
-st.set_page_config(
-    layout="wide",
-    page_title="Satellite Image Analysis",
-    initial_sidebar_state="expanded"
-)
 
-# Disable file watcher for PyTorch modules
-if 'streamlit.runtime.scriptrunner.file_watcher' in sys.modules:
-    sys.modules['streamlit.runtime.scriptrunner.file_watcher'].FileWatcher = lambda *args, **kwargs: None
 
 # Suppress warnings
 warnings.filterwarnings("ignore")
@@ -725,6 +716,21 @@ def main():
     except Exception as e:
         st.error(f"An unexpected error occurred: {str(e)}")
         st.button("Return to Start", on_click=lambda: st.session_state.update({"page": 1}))
+
+# Add this right before your main() function
+if __name__ == "__main__":
+    # Final workaround for Streamlit file watcher
+    import streamlit.runtime.scriptrunner as scriptrunner
+    if hasattr(scriptrunner, 'get_script_run_ctx'):
+        original_get_script_run_ctx = scriptrunner.get_script_run_ctx
+        def patched_get_script_run_ctx():
+            ctx = original_get_script_run_ctx()
+            if ctx and hasattr(ctx, '_session_state'):
+                ctx._session_state._initialized = True
+            return ctx
+        scriptrunner.get_script_run_ctx = patched_get_script_run_ctx
+    
+    main()
 
 if __name__ == "__main__":
     main()
