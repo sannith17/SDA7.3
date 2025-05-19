@@ -1,4 +1,3 @@
-7.3 the best out here
 
 import streamlit as st
 import numpy as np
