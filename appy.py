@@ -73,6 +73,9 @@ class DummyCNN(nn.Module):
         self.conv1 = nn.Conv2d(3, 6, 3)
         self.pool = nn.MaxPool2d(2,2)
         self.fc1 = nn.Linear(6*14*14, 3) # Assuming 3 classes now
+        
+        # Add this to prevent the error
+        self._backend = None
 
     def forward(self, x):
         x = self.pool(torch.relu(self.conv1(x)))
