@@ -477,14 +477,14 @@ def page4():
     if st.session_state.model_choice == "SVM" and st.session_state.heatmap_overlay_svm:
         st.image(
             st.session_state.heatmap_overlay_svm, 
-            caption="Change Heatmap (Blue = Changes)", 
+            caption="Change Heatmap (Dark_Coloured = Changes)", 
             use_column_width=True,
             channels="RGB"
         )
     elif st.session_state.model_choice == "CNN" and st.session_state.heatmap_overlay_cnn:
         st.image(
             st.session_state.heatmap_overlay_cnn, 
-            caption="Change Heatmap (Green = Changes)", 
+            caption="Change Heatmap (Dark_Coloured = Changes)", 
             use_column_width=True,
             channels="RGB"
         )
@@ -566,7 +566,7 @@ def page5():
     # Get classification data
     classification_data = st.session_state.classification
     if classification_data is None:
-        classification_data = {"Vegetation": 0, "Land": 0, "Water": 0} if st.session_state.model_choice == "SVM" else {"Vegetation": 0, "Land": 0, "Developed": 0}
+        classification_data = {"Vegetation": 0, "Land": 0, "Water": 0} if st.session_state.model_choice == "SVM" else {"land": 0, "water": 0, "vegetation": 0}
     
     # Display as both table and chart
     col1, col2 = st.columns([1, 2])
