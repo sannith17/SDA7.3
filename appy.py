@@ -752,7 +752,7 @@ def page5():
         
         st.markdown("**After Image Classification**")
         df_after = pd.DataFrame(list(classification_data.items()), columns=["Class", "Area (%)"])
-                st.table(df_after.style.format({"Area (%)": "{:.1f}%"}))
+        st.table(df_after.style.format({"Area (%)": "{:.1f}%"}))
         
     with col2:
         # Pie charts for classification
