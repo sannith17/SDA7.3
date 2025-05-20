@@ -753,47 +753,44 @@ def page5():
         st.markdown("**After Image Classification**")
         df_after = pd.DataFrame(list(classification_data.items()), columns=["Class", "Area (%)"])
         st.table(df_after.style.format({"Area (%)": "{:.1f}%"}))
-    
+        
     with col2:
-        # Create comparison pie charts
-        fig, ax = plt.subplots(1, 2, figsize=(12, 6))
+        # Pie charts for classification
+        st.markdown("**Classification Distribution**")
         
-        # Before image
-        ax[0].pie(
-            before_class.values(),
-            labels=before_class.keys(),
-            autopct='%1.1f%%',
-            shadow=True,
-            startangle=140,
-            colors=['#2e8b57', '#cd853f', '#4682b4']  # Green, Brown, Blue
-        )
-        ax[0].set_title('Before Image', color='white')
+        # Create tabs for before/after
+        tab1, tab2 = st.tabs(["Before", "After"])
         
-        # After image
-        ax[1].pie(
-            classification_data.values(),
-            labels=classification_data.keys(),
-            autopct='%1.1f%%',
-            shadow=True,
-            startangle=140,
-            colors=['#2e8b57', '#cd853f', '#4682b4']  # Green, Brown, Blue
-        )
-        ax[1].set_title('After Image', color='white')
-        
-        # Set background color
-        fig.patch.set_facecolor('#0e1117')
-        for a in ax:
-            a.set_facecolor('#0e1117')
-            for text in a.texts:
-                text.set_color('white')
-        
-        st.pyplot(fig)
-        
-        # Add bar chart using ECharts
-        st.markdown("**Change in Land Cover**")
-        bar_options = generate_bar_chart(before_class, classification_data)
-        st_echarts(options=bar_options, height="400px")
+        with tab1:
+            fig1, ax1 = plt.subplots(figsize=(6, 6))
+            ax1.pie(
+                before_class.values(), 
+                labels=before_class.keys(), 
+                autopct='%1.1f%%',
+                colors=['#2e8b57', '#cd853f', '#4682b4'],  # Vegetation green, land brown, water blue
+                startangle=90
+            )
+            ax1.axis('equal')
+            st.pyplot(fig1)
+            
+        with tab2:
+            fig2, ax2 = plt.subplots(figsize=(6, 6))
+            ax2.pie(
+                classification_data.values(), 
+                labels=classification_data.keys(), 
+                autopct='%1.1f%%',
+                colors=['#2e8b57', '#cd853f', '#4682b4'],
+                startangle=90
+            )
+            ax2.axis('equal')
+            st.pyplot(fig2)
 
+    # Add bar chart using ECharts
+    st.subheader("Land Cover Changes")
+    bar_options = generate_bar_chart(before_class, classification_data)
+    st_echarts(options=bar_options, height="500px")
+
+   
     # Navigation buttons
     col1, col2 = st.columns([1, 1])
     with col1:
@@ -804,105 +801,73 @@ def page5():
             st.session_state.page = 6
 
 def page6():
-    """Model evaluation page"""
-    st.header("6. Model Evaluation")
+    """Feature correlation analysis page"""
+    st.header("6. Feature Correlation Analysis")
     
-    if st.session_state.model_choice == "SVM":
-        st.subheader("SVM Model Evaluation")
-        
-        # Display ROC curve
-        if st.session_state.svm_roc_fig:
-            st.pyplot(st.session_state.svm_roc_fig)
-        else:
-            st.warning("ROC curve data not available for SVM.")
-        
-        # Display accuracy
-        if st.session_state.svm_accuracy is not None:
-            st.metric("Model Accuracy", f"{st.session_state.svm_accuracy:.1%}")
-        else:
-            st.warning("Accuracy data not available for SVM.")
-            
-    elif st.session_state.model_choice == "CNN":
-        st.subheader("CNN Model Evaluation")
-        
-        # Display ROC curve
-        if st.session_state.cnn_roc_fig:
-            st.pyplot(st.session_state.cnn_roc_fig)
-        else:
-            st.warning("ROC curve data not available for CNN.")
-        
-        # Display accuracy
-        if st.session_state.cnn_accuracy is not None:
-            st.metric("Model Accuracy", f"{st.session_state.cnn_accuracy:.1%}")
-        else:
-            st.warning("Accuracy data not available for CNN.")
+    if st.session_state.correlation_matrix is None:
+        st.error("Correlation data not available")
+        st.session_state.page = 1
+        return
     
-    # Correlation matrix (common for both models)
     st.subheader("Feature Correlation Matrix")
-    fig, ax = plt.subplots(figsize=(8, 6))
+    
+    # Display correlation matrix
+    fig, ax = plt.subplots(figsize=(10, 8))
     sns.heatmap(
         st.session_state.correlation_matrix,
         annot=True,
-        cmap='coolwarm',
-        center=0,
+        cmap="coolwarm",
+        vmin=-1,
+        vmax=1,
         ax=ax
     )
-    ax.set_title('Feature Correlation Matrix', color='white')
-    fig.patch.set_facecolor('#0e1117')
-    ax.tick_params(axis='x', colors='white')
-    ax.tick_params(axis='y', colors='white')
+    ax.set_title("Feature Correlation Matrix")
     st.pyplot(fig)
     
-    # Model descriptions
-    st.subheader("Model Characteristics")
-    col1, col2 = st.columns(2)
+    # Interpretation
+    st.markdown("""
+    ### Correlation Interpretation:
+    - **NDVI (Vegetation Index)** shows negative correlation with water (-0.2)
+    - **Urban Index** strongly correlates with brightness (0.6)
+    - **NDWI (Water Index)** negatively correlates with brightness (-0.4)
+    """)
+     st.subheader("Model Evaluation")
     
-    with col1:
-        st.markdown("""
-            <div style='background-color: #2e2e2e; padding: 15px; border-radius: 10px;'>
-                <h4>SVM Model</h4>
-                <ul>
-                    <li><b>Pros:</b> Fast training, works well with small datasets, good for linear separations</li>
-                    <li><b>Cons:</b> Less effective with complex patterns, requires careful feature engineering</li>
-                    <li><b>Best for:</b> Quick analyses with limited computational resources</li>
-                </ul>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown("""
-            <div style='background-color: #2e2e2e; padding: 15px; border-radius: 10px;'>
-                <h4>CNN Model</h4>
-                <ul>
-                    <li><b>Pros:</b> Excellent with image data, automatic feature extraction, handles complex patterns</li>
-                    <li><b>Cons:</b> Requires more data, slower training, needs more computational power</li>
-                    <li><b>Best for:</b> Detailed analyses where accuracy is critical</li>
-                </ul>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    # Navigation button
-    if st.button("⬅️ Back", key="page6_back"):
-        st.session_state.page = 5
+    if st.session_state.model_choice == "SVM":
+        if st.session_state.svm_roc_fig:
+            st.pyplot(st.session_state.svm_roc_fig)
+        st.metric("SVM Accuracy", f"{st.session_state.svm_accuracy * 100:.1f}%")
+    else:
+        if st.session_state.cnn_roc_fig:
+            st.pyplot(st.session_state.cnn_roc_fig)
+        st.metric("CNN Accuracy", f"{st.session_state.cnn_accuracy * 100:.1f}%")
 
-# -------- Main App Flow --------
+    # Navigation buttons
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.button("⬅️ Back", key="page6_back"):
+            st.session_state.page = 5
+    with col2:
+        if st.button("Finish 🏁", key="page6_finish"):
+            st.session_state.page = 1
+            st.experimental_rerun()
+
+# -------- Main App Control --------
 def main():
-    try:
-        if st.session_state.page == 1:
-            page1()
-        elif st.session_state.page == 2:
-            page2()
-        elif st.session_state.page == 3:
-            page3()
-        elif st.session_state.page == 4:
-            page4()
-        elif st.session_state.page == 5:
-            page5()
-        elif st.session_state.page == 6:
-            page6()
-    except Exception as e:
-        st.error(f"An unexpected error occurred: {str(e)}")
-        st.button("Return to Start", on_click=lambda: st.session_state.update({"page": 1}))
+    """Main app controller"""
+    # Page selection
+    if st.session_state.page == 1:
+        page1()
+    elif st.session_state.page == 2:
+        page2()
+    elif st.session_state.page == 3:
+        page3()
+    elif st.session_state.page == 4:
+        page4()
+    elif st.session_state.page == 5:
+        page5()
+    elif st.session_state.page == 6:
+        page6()
 
 if __name__ == "__main__":
     main()
