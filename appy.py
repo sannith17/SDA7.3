@@ -1,4 +1,7 @@
-import streamlit as st
+
+st.set_page_config(layout="wide", page_title="Satellite Image Analysis")
+
+# Then import all other modules
 import numpy as np
 import cv2
 import torch
@@ -62,7 +65,7 @@ def initialize_session_state():
     if 'classification_before_svm' not in st.session_state:
         st.session_state.classification_before_svm = {"Vegetation": 45, "Land": 35, "Water": 20}
     if 'classification_before_cnn' not in st.session_state:
-        st.session_state.classification_before_cnn = {"Vegetation": 50, "Land": 30, "water": 20}
+        st.session_state.classification_before_cnn = {"Vegetation": 50, "Land": 30, "Developed": 20}
     if 'correlation_matrix' not in st.session_state:
         st.session_state.correlation_matrix = None
 
