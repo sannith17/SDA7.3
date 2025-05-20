@@ -62,7 +62,7 @@ def initialize_session_state():
     if 'classification_before_svm' not in st.session_state:
         st.session_state.classification_before_svm = {"Vegetation": 45, "Land": 35, "Water": 20}
     if 'classification_before_cnn' not in st.session_state:
-        st.session_state.classification_before_cnn = {"Vegetation": 50, "Land": 30, "Developed": 20}
+        st.session_state.classification_before_cnn = {"Vegetation": 50, "Land": 30, "water": 20}
     if 'correlation_matrix' not in st.session_state:
         st.session_state.correlation_matrix = None
 
@@ -807,16 +807,6 @@ def page5():
         st.pyplot(fig)
 
     # Model evaluation metrics
-    st.subheader("Model Evaluation")
-    
-    if st.session_state.model_choice == "SVM":
-        if st.session_state.svm_roc_fig:
-            st.pyplot(st.session_state.svm_roc_fig)
-        st.metric("SVM Accuracy", f"{st.session_state.svm_accuracy * 100:.1f}%")
-    else:
-        if st.session_state.cnn_roc_fig:
-            st.pyplot(st.session_state.cnn_roc_fig)
-        st.metric("CNN Accuracy", f"{st.session_state.cnn_accuracy * 100:.1f}%")
 
     # Navigation buttons
     col1, col2 = st.columns([1, 1])
@@ -837,6 +827,17 @@ def page6():
         return
     
     st.subheader("Feature Correlation Matrix")
+
+    st.subheader("Model Evaluation")
+    
+    if st.session_state.model_choice == "SVM":
+        if st.session_state.svm_roc_fig:
+            st.pyplot(st.session_state.svm_roc_fig)
+        st.metric("SVM Accuracy", f"{st.session_state.svm_accuracy * 100:.1f}%")
+    else:
+        if st.session_state.cnn_roc_fig:
+            st.pyplot(st.session_state.cnn_roc_fig)
+        st.metric("CNN Accuracy", f"{st.session_state.cnn_accuracy * 100:.1f}%")
     
     # Display correlation matrix
     fig, ax = plt.subplots(figsize=(10, 8))
