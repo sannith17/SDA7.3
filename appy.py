@@ -831,7 +831,7 @@ def page6():
     - **Urban Index** strongly correlates with brightness (0.6)
     - **NDWI (Water Index)** negatively correlates with brightness (-0.4)
     """)
-     st.subheader("Model Evaluation")
+    st.subheader("Model Evaluation")
     
     if st.session_state.model_choice == "SVM":
         if st.session_state.svm_roc_fig:
