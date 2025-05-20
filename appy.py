@@ -786,9 +786,27 @@ def page5():
             st.pyplot(fig2)
 
     # Add bar chart using ECharts
+    def page5():
+    # ... existing code ...
+    
     st.subheader("Land Cover Changes")
-    bar_options = generate_bar_chart(before_class, classification_data)
-    st_echarts(options=bar_options, height="500px")
+    try:
+        bar_options = generate_bar_chart(before_class, classification_data)
+        if isinstance(bar_options, dict):  # ECharts format
+            st_echarts(options=bar_options, height="500px")
+        else:  # Plotly format
+            st.plotly_chart(bar_options, use_container_width=True)
+    except Exception as e:
+        st.error(f"Failed to render chart: {str(e)}")
+        # Fallback to simple matplotlib bar chart
+        fig, ax = plt.subplots()
+        y = range(len(before_class))
+        ax.barh([y-0.2 for y in y], before_class.values(), height=0.4, label='Before', color='#4682B4')
+        ax.barh([y+0.2 for y in y], classification_data.values(), height=0.4, label='After', color='#FFA500')
+        ax.set_yticks(y)
+        ax.set_yticklabels(before_class.keys())
+        ax.legend()
+        st.pyplot(fig)
 
     # Model evaluation metrics
     st.subheader("Model Evaluation")
