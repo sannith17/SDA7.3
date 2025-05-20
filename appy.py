@@ -365,87 +365,52 @@ def calculate_accuracy(model_type):
         return 0.0
 
 def generate_bar_chart(before_data, after_data):
-    """Generate bar chart using ECharts"""
-    options = {
-        "tooltip": {
-            "trigger": 'axis',
-            "axisPointer": {
-                "type": 'shadow'
-            }
-        },
-        "legend": {
-            "data": ['Before', 'After'],
-            "textStyle": {
-                "color": '#ffffff'
-            }
-        },
-        "grid": {
-            "left": '3%',
-            "right": '4%',
-            "bottom": '3%',
-            "containLabel": True
-        },
-        "xAxis": {
-            "type": 'value',
-            "axisLabel": {
-                "color": '#ffffff'
+    """Generate bar chart using Plotly as a fallback when ECharts fails"""
+    try:
+        # First try with ECharts
+        options = {
+            "tooltip": {"trigger": 'axis', "axisPointer": {"type": 'shadow'}},
+            "legend": {"data": ['Before', 'After'], "textStyle": {"color": '#ffffff'}},
+            "grid": {"left": '3%', "right": '4%', "bottom": '3%', "containLabel": True},
+            "xAxis": {
+                "type": 'value',
+                "axisLabel": {"color": '#ffffff'},
+                "axisLine": {"lineStyle": {"color": '#ffffff'}}
             },
-            "axisLine": {
-                "lineStyle": {
-                    "color": '#ffffff'
-                }
-            }
-        },
-        "yAxis": {
-            "type": 'category',
-            "data": list(before_data.keys()),
-            "axisLabel": {
-                "color": '#ffffff'
+            "yAxis": {
+                "type": 'category',
+                "data": list(before_data.keys()),
+                "axisLabel": {"color": '#ffffff'},
+                "axisLine": {"lineStyle": {"color": '#ffffff'}}
             },
-            "axisLine": {
-                "lineStyle": {
-                    "color": '#ffffff'
+            "series": [
+                {
+                    "name": 'Before',
+                    "type": 'bar',
+                    "data": list(before_data.values()),
+                    "itemStyle": {"color": '#4682B4'}
+                },
+                {
+                    "name": 'After',
+                    "type": 'bar',
+                    "data": list(after_data.values()),
+                    "itemStyle": {"color": '#FFA500'}
                 }
-            }
-        },
-        "series": [
-            {
-                "name": 'Before',
-                "type": 'bar',
-                "stack": 'total',
-                "label": {
-                    "show": True,
-                    "position": 'inside',
-                    "color": '#000000'
-                },
-                "emphasis": {
-                    "focus": 'series'
-                },
-                "data": list(before_data.values()),
-                "itemStyle": {
-                    "color": '#4682B4'  # Steel blue
-                }
-            },
-            {
-                "name": 'After',
-                "type": 'bar',
-                "stack": 'total',
-                "label": {
-                    "show": True,
-                    "position": 'inside',
-                    "color": '#000000'
-                },
-                "emphasis": {
-                    "focus": 'series'
-                },
-                "data": list(after_data.values()),
-                "itemStyle": {
-                    "color": '#FFA500'  # Orange
-                }
-            }
-        ]
-    }
-    return options
+            ]
+        }
+        return options
+    except Exception as e:
+        st.warning(f"ECharts configuration failed, using Plotly instead: {str(e)}")
+        import plotly.graph_objects as go
+        
+        fig = go.Figure(data=[
+            go.Bar(name='Before', y=list(before_data.keys()), 
+                  x=list(before_data.values()), orientation='h', marker_color='#4682B4'),
+            go.Bar(name='After', y=list(after_data.keys()), 
+                  x=list(after_data.values()), orientation='h', marker_color='#FFA500')
+        ])
+        fig.update_layout(barmode='group')
+        return fig
 
 # -------- Page Functions --------
 def page1():
@@ -787,8 +752,23 @@ def page5():
 
     # Add bar chart using ECharts
     st.subheader("Land Cover Changes")
-    bar_options = generate_bar_chart(before_class, classification_data)
-    st_echarts(options=bar_options, height="500px")
+    try:
+        bar_options = generate_bar_chart(before_class, classification_data)
+        if isinstance(bar_options, dict):  # ECharts format
+            st_echarts(options=bar_options, height="500px")
+        else:  # Plotly format
+            st.plotly_chart(bar_options, use_container_width=True)
+    except Exception as e:
+        st.error(f"Failed to render chart: {str(e)}")
+        # Fallback to simple matplotlib bar chart
+        fig, ax = plt.subplots()
+        y = range(len(before_class))
+        ax.barh([y-0.2 for y in y], before_class.values(), height=0.4, label='Before', color='#4682B4')
+        ax.barh([y+0.2 for y in y], classification_data.values(), height=0.4, label='After', color='#FFA500')
+        ax.set_yticks(y)
+        ax.set_yticklabels(before_class.keys())
+        ax.legend()
+        st.pyplot(fig)
 
    
     # Navigation buttons
