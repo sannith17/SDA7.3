@@ -748,10 +748,6 @@ def page5():
     with col1:
         st.markdown("**Before Image Classification**")
         df_before = pd.DataFrame(list(before_class.items()), columns=["Class", "Area (%)"])
-        st.table(df_before.style.format({"Area (%)": "{:.1f}%"}))
-        
-        st.markdown("**After Image Classification**")
-        df_after = pd.DataFrame(list(classification_data.items()), columns=["Class", "Area (%)"])
         st.table(df_after.style.format({"Area (%)": "{:.1f}%"}))
         
     with col2:
@@ -786,8 +782,7 @@ def page5():
             st.pyplot(fig2)
 
     # Add bar chart using ECharts
-    def page5():
-        st.subheader("Land Cover Changes")
+    st.subheader("Land Cover Changes")
     try:
         bar_options = generate_bar_chart(before_class, classification_data)
         if isinstance(bar_options, dict):  # ECharts format
@@ -807,6 +802,16 @@ def page5():
         st.pyplot(fig)
 
     # Model evaluation metrics
+    st.subheader("Model Evaluation")
+    
+    if st.session_state.model_choice == "SVM":
+        if st.session_state.svm_roc_fig:
+            st.pyplot(st.session_state.svm_roc_fig)
+        st.metric("SVM Accuracy", f"{st.session_state.svm_accuracy * 100:.1f}%")
+    else:
+        if st.session_state.cnn_roc_fig:
+            st.pyplot(st.session_state.cnn_roc_fig)
+        st.metric("CNN Accuracy", f"{st.session_state.cnn_accuracy * 100:.1f}%")
 
     # Navigation buttons
     col1, col2 = st.columns([1, 1])
@@ -827,17 +832,6 @@ def page6():
         return
     
     st.subheader("Feature Correlation Matrix")
-
-    st.subheader("Model Evaluation")
-    
-    if st.session_state.model_choice == "SVM":
-        if st.session_state.svm_roc_fig:
-            st.pyplot(st.session_state.svm_roc_fig)
-        st.metric("SVM Accuracy", f"{st.session_state.svm_accuracy * 100:.1f}%")
-    else:
-        if st.session_state.cnn_roc_fig:
-            st.pyplot(st.session_state.cnn_roc_fig)
-        st.metric("CNN Accuracy", f"{st.session_state.cnn_accuracy * 100:.1f}%")
     
     # Display correlation matrix
     fig, ax = plt.subplots(figsize=(10, 8))
