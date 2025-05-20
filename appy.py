@@ -62,7 +62,7 @@ def initialize_session_state():
     if 'classification_before_svm' not in st.session_state:
         st.session_state.classification_before_svm = {"Vegetation": 45, "Land": 35, "Water": 20}
     if 'classification_before_cnn' not in st.session_state:
-        st.session_state.classification_before_cnn = {"Vegetation": 50, "Land": 30, "Developed": 20}
+        st.session_state.classification_before_cnn = {"Vegetation": 50, "Land": 30, "water": 20}
     if 'correlation_matrix' not in st.session_state:
         st.session_state.correlation_matrix = None
 
@@ -298,11 +298,11 @@ def classify_land_cnn(img):
             # Renormalize
             probabilities /= probabilities.sum()
             
-            classes = ["Vegetation", "Land", "Developed"]
+            classes = ["Vegetation", "Land", "water"]
             return {classes[i]: prob * 100 for i, prob in enumerate(probabilities)}
     except Exception as e:
         st.error(f"CNN classification failed: {e}")
-        return {"Vegetation": 33.3, "Land": 33.3, "Developed": 33.3}
+        return {"Vegetation": 33.3, "Land": 33.3, "water": 33.3}
 
 # -------- Analysis Functions --------
 def detect_calamity(date1, date2, change_percentage):
@@ -703,7 +703,7 @@ def page5():
     # Get classification data
     classification_data = st.session_state.classification
     if classification_data is None:
-        classification_data = {"Vegetation": 0, "Land": 0, "Water": 0} if st.session_state.model_choice == "SVM" else {"Vegetation": 0, "Land": 0, "Developed": 0}
+        classification_data = {"Vegetation": 0, "Land": 0, "Water": 0} if st.session_state.model_choice == "SVM" else {"Vegetation": 0, "Land": 0, "water": 0}
     
     # Get before classification data
     before_class = st.session_state.classification_before_svm if st.session_state.model_choice == "SVM" else st.session_state.classification_before_cnn
