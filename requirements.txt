@@ -11,3 +11,4 @@ seaborn
 torch
 torchvision
 python-dateutil
+streamlit-echarts
