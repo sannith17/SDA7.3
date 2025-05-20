@@ -12,3 +12,4 @@ torch
 torchvision
 python-dateutil
 streamlit-echarts
+plotly
