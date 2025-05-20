@@ -738,7 +738,7 @@ def page5():
     # Get classification data
     classification_data = st.session_state.classification
     if classification_data is None:
-        classification_data = {"Vegetation": 0, "Land": 0, "Water": 0} if st.session_state.model_choice == "SVM" else {"Vegetation": 0, "Land": 0, "Developed": 0}
+        classification_data = {"Vegetation": 0, "Land": 0, "Water": 0} if st.session_state.model_choice == "SVM" else {"Vegetation": 0, "Land": 0, "water": 0}
     
     # Get before classification data
     before_class = st.session_state.classification_before_svm if st.session_state.model_choice == "SVM" else st.session_state.classification_before_cnn
