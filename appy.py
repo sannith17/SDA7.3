@@ -1,3 +1,4 @@
+import streamlit as st
 st.set_page_config(layout="wide", page_title="Satellite Image Analysis")
 
 # Then import all other modules
