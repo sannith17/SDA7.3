@@ -787,9 +787,7 @@ def page5():
 
     # Add bar chart using ECharts
     def page5():
-    # ... existing code ...
-    
-    st.subheader("Land Cover Changes")
+        st.subheader("Land Cover Changes")
     try:
         bar_options = generate_bar_chart(before_class, classification_data)
         if isinstance(bar_options, dict):  # ECharts format
