@@ -850,30 +850,57 @@ def page5():
         st.error(f"An unexpected error occurred: {str(e)}")
 
     # Navigation buttons
+    # Navigation buttons in page5()
     col1, col2 = st.columns([1, 1])
     with col1:
         if st.button("⬅️ Back", key="page5_back"):
             st.session_state.page = 4
+            st.experimental_rerun()  # Force immediate page refresh
     with col2:
         if st.button("Next ➡️", key="page5_next"):
             st.session_state.page = 6
+            st.experimental_rerun()  # Force immediate page refresh
 
 # -------- Main App Control --------
 def main():
     """Main app controller"""
-    # Page selection
-    if st.session_state.page == 1:
-        page1()
-    elif st.session_state.page == 2:
-        page2()
-    elif st.session_state.page == 3:
-        page3()
-    elif st.session_state.page == 4:
-        page4()
-    elif st.session_state.page == 5:
-        page5()
-    elif st.session_state.page == 6:
-        page6()
+    try:
+        # Initialize session state if not already done
+        if 'page' not in st.session_state:
+            st.session_state.page = 1
+        
+        # Debugging output (can be removed later)
+        st.sidebar.markdown(f"**Current Page:** {st.session_state.page}")
+        
+        # Page selection with error handling
+        if st.session_state.page == 1:
+            page1()
+        elif st.session_state.page == 2:
+            page2()
+        elif st.session_state.page == 3:
+            page3()
+        elif st.session_state.page == 4:
+            page4()
+        elif st.session_state.page == 5:
+            page5()
+        elif st.session_state.page == 6:
+            page6()
+        else:
+            st.error("Invalid page number, resetting to page 1")
+            st.session_state.page = 1
+            st.experimental_rerun()
+            
+    except Exception as e:
+        st.error(f"An unexpected error occurred: {str(e)}")
+        st.session_state.page = 1  # Reset to first page on error
+        st.experimental_rerun()
 
 if __name__ == "__main__":
+    # Add some basic configuration
+    st.set_page_config(layout="wide", page_title="Satellite Image Analysis")
+    
+    # Initialize session state if not already done
+    if 'page' not in st.session_state:
+        st.session_state.page = 1
+    
     main()
