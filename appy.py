@@ -298,11 +298,11 @@ def classify_land_cnn(img):
             # Renormalize
             probabilities /= probabilities.sum()
             
-            classes = ["Vegetation", "Land", "Developed"]
+            classes = ["Vegetation", "Land", "water"]
             return {classes[i]: prob * 100 for i, prob in enumerate(probabilities)}
     except Exception as e:
         st.error(f"CNN classification failed: {e}")
-        return {"Vegetation": 33.3, "Land": 33.3, "Developed": 33.3}
+        return {"Vegetation": 33.3, "Land": 33.3, "water": 33.3}
 
 # -------- Analysis Functions --------
 def detect_calamity(date1, date2, change_percentage):
