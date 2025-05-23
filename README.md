@@ -1,6 +1,12 @@
 **Satellite Data Analysis for Disaster Management**
 
 
+
+https://github.com/user-attachments/assets/cd6f9428-5c86-4417-961f-ab04aff28089
+
+
+
+
 📊 Project Overview: Satellite Data Analysis for Disaster Management
 This project presents a comprehensive Streamlit-based dashboard designed for analyzing satellite imagery to assess environmental changes, particularly in the context of natural disasters. The solution leverages machine learning and deep learning algorithms—notably CNN, SVM, and KMeans—to perform tasks such as water body detection, land-use change monitoring, and disaster impact assessment.
 
