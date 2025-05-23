@@ -31,7 +31,7 @@ Frontend: Streamlit (for dashboard UI)
 
 Backend: Python
 
-ML/DL Models: CNN, SVM, PCA, KMeans
+ML/DL Models: CNN, SVM, PCA
 
 Libraries: OpenCV, scikit-learn, TensorFlow/Keras, Matplotlib, NumPy, Pandas
 
